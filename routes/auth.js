@@ -49,8 +49,8 @@ router.post("/register", async (req, res) => {
         res.header("x-auth-token", token)
 
         const { password, createdAt, updatedAt, ...otherInfo } = user._doc;
-        sendOTPVerification({ userId: user._id, email: req.body.email }, res);
-        res.status(200).json({ status: "200", user: otherInfo });
+        sendOTPVerification({ user, email: req.body.email }, res);
+        //res.status(200).json({ status: "200", user: otherInfo });
 
 
     } catch (err) {
@@ -90,7 +90,7 @@ router.post("/login", async (req, res) => {
 });
 
 
-const sendOTPVerification = async ({ userId, email }, res) => {
+const sendOTPVerification = async ({ user, email }, res) => {
     try {
         const otp = `${Math.floor(1000 + Math.random() * 9000)}`;
         const mailOptions = {
@@ -104,7 +104,7 @@ const sendOTPVerification = async ({ userId, email }, res) => {
         const saltRounds = 10;
         const hashedOTP = await bcrypt.hash(otp, saltRounds);
         const newOTPVerification = new OTPVerification({
-            userId,
+            userId: user._id,
             otp: hashedOTP,
             createdAt: Date.now(),
             expiresAt: Date.now() + 3600000
@@ -112,10 +112,11 @@ const sendOTPVerification = async ({ userId, email }, res) => {
         await newOTPVerification.save();
         await nodemailer.sendMail(mailOptions);
         res.json({
-            status: "Pending",
+            user,
+            verificationStatus: "Pending",
             message: "Verification otp mail sent",
             data: {
-                userId,
+                userId: user._id,
                 email,
             }
         })
